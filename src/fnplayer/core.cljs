@@ -1,5 +1,6 @@
 (ns fnplayer.core
-  (:require [fnplayer.synth :as synth]))
+  (:require [fnplayer.synth :as synth]
+            [fnplayer.canvas :as canvas]))
 
 ;; time, state -> [scale-pos, new-state]
 (def note-equation (fn [t _]
@@ -11,7 +12,7 @@
 ;; 0 <= x <= 1, scale is a vector of integers > 0
 (defn note-in-scale [x scale]
   (nth scale (min (dec (count scale))
-                  (.floor js/Math (* x (count scale))))))
+                  (int (* x (count scale))))))
 
 (defn looper []
   (let [start-time (atom nil)]
@@ -23,12 +24,13 @@
 
 (defn synth-loop [scale equation]
   (let [my-looper (looper)]
-    ((fn inner [eq-state note t]
+    ((fn inner [eq-state poss note t]
        (let [[scale-pos new-state] (equation (/ t 1000) eq-state)
              new-note (note-in-scale scale-pos scale)]
          (when (not= new-note note)
-           (do (.log js/console note) (synth/osc new-note (/ t 1000) 0.5)))
-         (my-looper #(inner new-state new-note %))))
-     nil 0 0)))
+           (synth/osc new-note (/ t 1000) 0.5))
+         (canvas/draw-positions poss)
+         (my-looper #(inner new-state (take 5 (cons scale-pos poss)) note %))))
+     nil '(0 0 0 0 0) 0 0)))
 
 (synth-loop pentatonic note-equation)
