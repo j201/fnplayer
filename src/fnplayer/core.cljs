@@ -3,10 +3,24 @@
             [fnplayer.canvas :as canvas]))
 
 ;; time, state -> [scale-pos, new-state]
-(def note-equation (fn [t _]
+(def sum-sines (fn [t _]
                      [(+ 0.5 (* 0.25 (+ (.sin js/Math (* t 5))
                                         (.sin js/Math (* t 4)))))
                       nil]))
+
+(defn throttle [eq interval]
+  (fn [t st]
+    (let [[eq-st last-x last-t] (or st [nil 0.5 0])]
+      (if (< interval (- t last-t))
+        (let [[new-x new-st] (eq t eq-st)]
+          [new-x [new-st new-x t]])
+        [last-x [eq-st last-x last-t]]))))
+
+(def logistic (fn [t xp]
+                (let [xp' (if (nil? xp) 0.4 xp)
+                      xn (* 3.7 xp' (- 1 xp'))]
+                [xn xn])))
+
 (def pentatonic [0 3 5 7 10 12])
 
 ;; 0 <= x <= 1, scale is a vector of integers > 0
@@ -33,4 +47,4 @@
          (my-looper #(inner new-state (take 5 (cons scale-pos poss)) note %))))
      nil '(0 0 0 0 0) 0 0)))
 
-(synth-loop pentatonic note-equation)
+(synth-loop pentatonic (throttle logistic 0.1))
